@@ -102,6 +102,32 @@ app.MapGet("/v1/climate", async (string latMin, string latMax, string lonMin, st
         );
     }
 
+    MinMaxResult CalculateMinMax(Dictionary<string, double> data)
+    {
+        var filteredData = data.Where(x => x.Value != -999).ToDictionary(x => x.Key, x => x.Value);
+
+        if (!filteredData.Any())
+        {
+            return new MinMaxResult
+            {
+                MinValue = double.NaN,
+                MinDate = "N/A",
+                MaxValue = double.NaN,
+                MaxDate = "N/A"
+            };
+        }
+
+        var minEntry = filteredData.OrderBy(x => x.Value).First();
+        var maxEntry = filteredData.OrderByDescending(x => x.Value).First();
+
+        return new MinMaxResult
+        {
+            MinValue = minEntry.Value,
+            MinDate = minEntry.Key,
+            MaxValue = maxEntry.Value,
+            MaxDate = maxEntry.Key
+        };
+    }
 
     var averageResults = new
     {
@@ -113,7 +139,23 @@ app.MapGet("/v1/climate", async (string latMin, string latMax, string lonMin, st
         WS2M = CalculateAverage(ws2mData)
     };
 
-    return Results.Json(averageResults);
+    var minMaxResults = new
+    {
+        T2M = CalculateMinMax(averageResults.T2M.ToDictionary(k => k.Key, v => v.Value)),
+        T2M_MIN = CalculateMinMax(averageResults.T2M_MIN.ToDictionary(k => k.Key, v => v.Value)),
+        T2M_MAX = CalculateMinMax(averageResults.T2M_MAX.ToDictionary(k => k.Key, v => v.Value)),
+        PRECTOTCORR = CalculateMinMax(averageResults.PRECTOTCORR.ToDictionary(k => k.Key, v => v.Value)),
+        RH2M = CalculateMinMax(averageResults.RH2M.ToDictionary(k => k.Key, v => v.Value)),
+        WS2M = CalculateMinMax(averageResults.WS2M.ToDictionary(k => k.Key, v => v.Value))
+    };
+
+    var finalResults = new
+    {
+        Averages = averageResults,
+        MinMax = minMaxResults
+    };
+
+    return Results.Json(finalResults);
 });
 
 app.MapGet("/v2/climate", async (string latMin, string latMax, string lonMin, string lonMax, string? startDate = null, string? endDate = null) =>
@@ -201,6 +243,33 @@ app.MapGet("/v2/climate", async (string latMin, string latMax, string lonMin, st
         );
     }
 
+    MinMaxResult CalculateMinMax(Dictionary<string, double> data)
+    {
+        var filteredData = data.Where(x => x.Value != -999).ToDictionary(x => x.Key, x => x.Value);
+
+        if (!filteredData.Any())
+        {
+            return new MinMaxResult
+            {
+                MinValue = double.NaN,
+                MinDate = "N/A",
+                MaxValue = double.NaN,
+                MaxDate = "N/A"
+            };
+        }
+
+        var minEntry = filteredData.OrderBy(x => x.Value).First();
+        var maxEntry = filteredData.OrderByDescending(x => x.Value).First();
+
+        return new MinMaxResult
+        {
+            MinValue = minEntry.Value,
+            MinDate = minEntry.Key,
+            MaxValue = maxEntry.Value,
+            MaxDate = maxEntry.Key
+        };
+    }
+
     var averageResults = new
     {
         T2M = CalculateAverage(t2m),
@@ -211,7 +280,23 @@ app.MapGet("/v2/climate", async (string latMin, string latMax, string lonMin, st
         WS2M = CalculateAverage(ws2mData)
     };
 
-    return Results.Json(averageResults);
+    var minMaxResults = new
+    {
+        T2M = CalculateMinMax(averageResults.T2M),
+        T2M_MIN = CalculateMinMax(averageResults.T2M_MIN),
+        T2M_MAX = CalculateMinMax(averageResults.T2M_MAX),
+        PRECTOTCORR = CalculateMinMax(averageResults.PRECTOTCORR),
+        RH2M = CalculateMinMax(averageResults.RH2M),
+        WS2M = CalculateMinMax(averageResults.WS2M)
+    };
+
+    var finalResults = new
+    {
+        Averages = averageResults,
+        MinMax = minMaxResults
+    };
+
+    return Results.Json(finalResults);
 });
 
 app.Run();
@@ -233,4 +318,12 @@ static void ProcessData(JsonElement parameters, string parameterName, Dictionary
             dataStore[date].Add(value);
         }
     }
+}
+
+public class MinMaxResult
+{
+    public double MinValue { get; set; }
+    public string MinDate { get; set; }
+    public double MaxValue { get; set; }
+    public string MaxDate { get; set; }
 }
